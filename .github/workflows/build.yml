@@ -1,8 +1,8 @@
 name: Build OpenWrt x86
 
 on:
-  workflow_dispatch: # 允许手动触发
-  push: # 可选：代码推送时触发
+  workflow_dispatch:
+  push:
     branches:
       - main
 
@@ -25,7 +25,7 @@ jobs:
       run: |
         git clone https://github.com/openwrt/openwrt.git
         cd openwrt
-        git checkout v23.05.3 # 指定稳定版本
+        git checkout v23.05.3  # 使用稳定版本标签
 
     - name: Update Feeds
       run: |
@@ -33,21 +33,21 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    - name: Custom Configuration (可选)
+    - name: Apply Custom Config (可选)
       run: |
         cd openwrt
-        cp config.seed .config # 如果有预置配置
+        cp ../config.seed .config  # 从仓库根目录复制预置配置
         make defconfig
-        make menuconfig # 非交互式需替换为脚本配置
 
     - name: Compile OpenWrt
       run: |
         cd openwrt
-        make -j$(nproc) download # 预下载所有源码
+        make -j$(nproc) download
         make -j$(nproc) V=s
 
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4  # 升级到最新版本
       with:
         name: openwrt-bin
         path: openwrt/bin/targets/x86/64/*
+        if-no-files-found: error  # 严格检查文件存在性
