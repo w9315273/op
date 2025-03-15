@@ -1,6 +1,6 @@
 name: Build OpenWrt x86
 
-# 定义触发条件：手动触发（workflow_dispatch）和 main 分支的 push
+# 定义触发条件：手动触发和 main 分支 push 时执行
 on:
   workflow_dispatch:
   push:
@@ -9,26 +9,27 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04   # 指定运行环境为 Ubuntu 22.04
+    runs-on: ubuntu-22.04  # 运行环境：Ubuntu 22.04
+
     steps:
       # 1. 检出主仓库代码
       - name: Checkout repository code
-        uses: actions/checkout@v4   # 使用 v4 版 checkout action
+        uses: actions/checkout@v4
 
       # 2. 安装编译 OpenWrt 所需的依赖工具和库
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential ccache ecj fastjar file g++ gawk \
-          gettext git java-propose-classpath libelf-dev libncurses5-dev \
-          libncursesw5-dev libssl-dev python3 python3-distutils python3-setuptools \
-          rsync unzip wget zlib1g-dev
+            gettext git java-propose-classpath libelf-dev libncurses5-dev \
+            libncursesw5-dev libssl-dev python3 python3-distutils python3-setuptools \
+            rsync unzip wget zlib1g-dev
 
       # 3. 克隆 OpenWrt 源码仓库
       - name: Clone OpenWrt Source
         run: git clone https://github.com/openwrt/openwrt.git
 
-      # 4. 切换到指定的稳定版本，比如 v23.05.3
+      # 4. 切换到指定的稳定版本 (v23.05.3)
       - name: Checkout OpenWrt Stable Version
         working-directory: openwrt  # 进入 openwrt 目录
         run: git checkout v23.05.3    # 切换到稳定版本标签
@@ -41,12 +42,17 @@ jobs:
           ./scripts/feeds install -a   # 安装所有 feed
 
       # 6. 可选：应用自定义配置
-      #    将仓库根目录下的 config.seed 文件复制到 openwrt 目录，并生成默认配置
+      #    从仓库跟目录复制 config.seed 到 openwrt 目录，若未找到则使用默认 defconfig
       - name: Apply Custom Configuration (Optional)
         working-directory: openwrt  # 进入 openwrt 目录
         run: |
-          cp ../config.seed .config   # 从主仓库复制预置配置文件到 openwrt 目录下命名为 .config
-          make defconfig            # 生成默认配置
+          if [ -f ../config.seed ]; then
+            echo "Found config.seed, copying to .config"
+            cp ../config.seed .config  # 复制预置配置文件到 openwrt 目录并命名为 .config
+          else
+            echo "No config.seed found, using default configuration"
+          fi
+          make defconfig  # 生成默认配置
 
       # 7. 下载需要的源码并开始编译 OpenWrt
       - name: Download Sources and Compile OpenWrt
@@ -55,11 +61,18 @@ jobs:
           make -j$(nproc) download  # 根据 CPU 核心数并行下载所需的源码
           make -j$(nproc) V=s       # 进行并行编译，并显示详细编译过程
 
-      # 8. 上传编译生成的固件构件
-      #    如果上传目录未找到文件，则报错（if-no-files-found: error）
+      # 8. 调试输出：列出编译生成的目录结构，方便确认固件生成位置
+      - name: List Build Artifacts
+        working-directory: openwrt/bin/targets
+        run: |
+          echo "Listing build artifacts under openwrt/bin/targets:"
+          ls -R
+
+      # 9. 上传编译生成的固件构件
+      #    使用通配符上传 openwrt/bin/targets 下所有生成的文件，确保无论固件生成在哪个子目录都能上传
       - name: Upload Built Artifacts
-        uses: actions/upload-artifact@v4  # 使用上传构件 action v4
+        uses: actions/upload-artifact@v4
         with:
-          name: openwrt-bin                # 构件名称
-          path: openwrt/bin/targets/x86/64/* # 上传指定目录下编译生成的文件
-          if-no-files-found: error         # 如果未找到文件，则触发错误
+          name: openwrt-bin                      # 构件名称
+          path: openwrt/bin/targets/**/*           # 上传 targets 目录下的所有文件和子目录
+          if-no-files-found: error               # 如果找不到文件则报错
