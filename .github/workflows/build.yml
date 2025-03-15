@@ -1,0 +1,64 @@
+name: Build OpenWrt x86 Firmware
+
+on:
+  push:
+    branches: [main]       # 可根据实际情况调整
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 第一步：检出代码
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 如果你选择在工作流中 clone OpenWrt 官方源码，则取消下面这段代码的注释，
+      # 并删除你的仓库中已有的 OpenWrt 目录（或者将工作路径切换到 clone 后的目录）
+      - name: Clone OpenWrt source
+        run: |
+          git clone https://github.com/openwrt/openwrt.git
+          cd openwrt
+
+      # 第二步：安装编译依赖  
+      # ubuntu-latest 虚拟机自带的包可能不全，因此先更新 apt-get 并安装所需依赖
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libncurses5-dev gawk gettext unzip \
+              zlib1g-dev file libssl-dev xsltproc wget git subversion
+
+      # 第三步：更新 feeds 并安装所有 feed  
+      - name: Update and install feeds
+        run: |
+          # 如果你直接 clone 的 openwrt 源码，源码根目录下应包含 scripts/feeds 脚本
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      # 第四步：生成默认编译配置  
+      # 这里建议先在本地利用 menuconfig 配置好 x86 目标环境并导出 .config 文件，
+      # 然后放入仓库。若没有 .config 文件，make defconfig 会生成默认配置，
+      # 默认一般为 x86 架构如：Target System -> Intel/AMD PC  
+      - name: Generate default configuration
+        run: |
+          make defconfig
+
+      # 如果你需要自定义配置，可以将自定义的 .config 文件提交到仓库，
+      # 或者在此处使用命令行工具如 scripts/diffconfig.sh 修改
+
+      # 第五步：开始编译固件  
+      # V=s 可打印详细编译日志，-j $(nproc) 根据虚拟机核心数并行编译
+      - name: Build OpenWrt Firmware
+        run: |
+          make -j$(nproc) V=s
+
+      # 第六步（可选）：将编译好的固件作为构件上传  
+      - name: Upload Artifacts
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          name: openwrt-x86-firmware
+          path: |
+            bin/targets/**/*
