@@ -25,7 +25,7 @@ jobs:
       run: |
         git clone https://github.com/openwrt/openwrt.git
         cd openwrt
-        git checkout v23.05.3  # 使用稳定版本标签
+        git checkout v23.05.3
 
     - name: Update Feeds
       run: |
@@ -33,11 +33,15 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    - name: Apply Custom Config (可选)
+    - name: Apply Custom Config
       run: |
         cd openwrt
-        cp ../config.seed .config  # 从仓库根目录复制预置配置
-        make defconfig
+        if [ -f ../config.seed ]; then
+          cp ../config.seed .config
+          make defconfig
+        else
+          echo "config.seed not found, skipping custom config"
+        fi
 
     - name: Compile OpenWrt
       run: |
@@ -46,8 +50,8 @@ jobs:
         make -j$(nproc) V=s
 
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v4  # 升级到最新版本
+      uses: actions/upload-artifact@v4
       with:
         name: openwrt-bin
         path: openwrt/bin/targets/x86/64/*
-        if-no-files-found: error  # 严格检查文件存在性
+        if-no-files-found: error
