@@ -61,7 +61,7 @@ jobs:
       # 可选步骤：测试下载上传的 Artifact，以消除 lint 检查的“下载信息缺失”警告
       - name: Download Artifact (Test)
         if: success()
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@latest
         with:
           name: openwrt-x86-firmware
           path: downloaded_artifact
