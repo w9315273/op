@@ -50,7 +50,7 @@ jobs:
       # 第六步：将编译好的固件作为构件上传，并添加 retention-days 说明
       - name: Upload Artifacts
         if: success()
-        uses: actions/upload-artifact@v4.6.1
+        uses: actions/upload-artifact@v4.1.9
         with:
           name: openwrt-x86-firmware
           # 上传 openwrt/bin/targets 目录下的所有子目录文件（请根据你固件生成目录确认路径）
@@ -61,7 +61,7 @@ jobs:
       # 可选步骤：测试下载上传的 Artifact，以消除 lint 检查的“下载信息缺失”警告
       - name: Download Artifact (Test)
         if: success()
-        uses: actions/download-artifact@v4.6.1
+        uses: actions/download-artifact@v4.1.9
         with:
           name: openwrt-x86-firmware
           path: downloaded_artifact
